@@ -138,9 +138,9 @@ NTSTATUS findCodeCave(HANDLE hProcess, PVOID* pCodeCave, ULONGLONG desiredSize, 
 
 	desiredSize = ALIGN_UP(desiredSize, 0x10);
 	*pActualSize = 0;
-	RtlZeroMemory(&freeMemInfo, sizeof(MEMORY_BASIC_INFORMATION));
+	//RtlZeroMemory(&freeMemInfo, sizeof(MEMORY_BASIC_INFORMATION));
 	RtlZeroMemory(&imageOrMappingInfo, sizeof(MEMORY_BASIC_VLM_INFORMATION));
-
+	RtlSecureZeroMemory(&freeMemInfo, sizeof(MEMORY_BASIC_INFORMATION));
 	for (;;){
 		if (queryFreeMem)
 			status = NtQueryVirtualMemory(hProcess, pCurrAddress, MemoryBasicInformation, &freeMemInfo, sizeof(MEMORY_BASIC_INFORMATION), &resultLen);
