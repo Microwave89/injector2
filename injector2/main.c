@@ -1,8 +1,15 @@
 #include "global.h"
-
+//__declspec(dllimport) void __stdcall KiUserExceptionDispatcher(void* p1, void* p2, void* p3, void* p4, void* p5);
 #define MIN_VM_ACCESS_MASK ( PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION)
 
-UCHAR sg_pFullImageHdr[PAGE_SIZE];
+static UCHAR sg_pFullImageHdr[PAGE_SIZE];
+
+
+static PKI_RAISE_USER_EXCEPTION_DISPATCHER sg_fpKiRaiseUserExceptionDispatcher;
+static PKI_USER_APC_DISPATCHER sg_fpKiUserApcDispatcher;
+static PKI_USER_CALLBACK_DISPATCHER sg_fpKiUserCallbackDispatcher;
+static PKI_USER_EXCEPTION_DISPATCHER sg_fpKiUserExceptionDispatcher;
+
 
 NTSTATUS openProcByName(PHANDLE pProcess, PUNICODE_STRING pProcName, BOOLEAN useDebugPrivilege){
 	SYSTEM_PROCESS_INFORMATION procInfo;
@@ -122,8 +129,11 @@ NTSTATUS findCodeCave(HANDLE hProcess, PVOID* pCodeCave, ULONGLONG desiredSize, 
 	MEMORY_BASIC_INFORMATION freeMemInfo;
 	MEMORY_BASIC_VLM_INFORMATION imageOrMappingInfo;
 	IMAGE_SECTION_HEADER currSecHdr;
+	ANSI_STRING aFuncName;
 	ULONG oldProt;
 
+	PVOID pBlock = NULL;
+	PVOID pNtdllBase = NULL;
 	NTSTATUS status = STATUS_UNSUCCESSFUL;
 	PVOID pCurrAddress = NULL;
 	PIMAGE_NT_HEADERS64 pPeHdr64 = NULL;
@@ -138,9 +148,40 @@ NTSTATUS findCodeCave(HANDLE hProcess, PVOID* pCodeCave, ULONGLONG desiredSize, 
 
 	desiredSize = ALIGN_UP(desiredSize, 0x10);
 	*pActualSize = 0;
-	//RtlZeroMemory(&freeMemInfo, sizeof(MEMORY_BASIC_INFORMATION));
-	RtlZeroMemory(&imageOrMappingInfo, sizeof(MEMORY_BASIC_VLM_INFORMATION));
+	//LdrEnumerateLoadedModules
+	RtlSecureZeroMemory(&imageOrMappingInfo, sizeof(MEMORY_BASIC_VLM_INFORMATION));
 	RtlSecureZeroMemory(&freeMemInfo, sizeof(MEMORY_BASIC_INFORMATION));
+	
+	pNtdllBase = ((PLDR_DATA_TABLE_ENTRY)((((PLDR_DATA_TABLE_ENTRY)(NtCurrentPeb()->Ldr->InLoadOrderModuleList.Flink))->InLoadOrderLinks.Flink)))->DllBase;
+
+	//KiUserApcDispatcher(NULL);
+	//KiUserExceptionDispatcher(NULL, NULL, NULL, NULL, NULL);
+	RtlInitAnsiString(&aFuncName, "KiRaiseUserExceptionDispatcher");
+	status = LdrGetProcedureAddress(pNtdllBase, &aFuncName, 0, (PVOID)&sg_fpKiRaiseUserExceptionDispatcher);
+	if (status)
+		return status;
+	RtlInitAnsiString(&aFuncName, "KiUserApcDispatcher");
+	status = LdrGetProcedureAddress(pNtdllBase, &aFuncName, 0, (PVOID)&sg_fpKiUserApcDispatcher);
+	if (status)
+		return status;
+	RtlInitAnsiString(&aFuncName, "KiUserCallbackDispatcher");
+	status = LdrGetProcedureAddress(pNtdllBase, &aFuncName, 0, (PVOID)&sg_fpKiUserCallbackDispatcher);
+	if (status)
+		return status;
+	RtlInitAnsiString(&aFuncName, "KiUserExceptionDispatcher");
+	status = LdrGetProcedureAddress(pNtdllBase, &aFuncName, 0, (PVOID)&sg_fpKiUserExceptionDispatcher);
+	if (status)
+		return status;
+
+	DebugPrint2A("KiRaiseUserExceptionDispatcher: %p", sg_fpKiRaiseUserExceptionDispatcher);
+	DebugPrint2A("KiUserApcDispatcher: %p", sg_fpKiUserApcDispatcher);
+	DebugPrint2A("KiUserCallbackDispatcher: %p", sg_fpKiUserCallbackDispatcher);
+	DebugPrint2A("KiUserExceptionDispatcher: %p", sg_fpKiUserExceptionDispatcher);
+
+	status = RtlAllocateMemoryZone(&imageOrMappingInfo, 0x200, &pBlock);
+	if (status)
+		return status;
+
 	for (;;){
 		if (queryFreeMem)
 			status = NtQueryVirtualMemory(hProcess, pCurrAddress, MemoryBasicInformation, &freeMemInfo, sizeof(MEMORY_BASIC_INFORMATION), &resultLen);

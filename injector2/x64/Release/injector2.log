@@ -1,4 +1,4 @@
-﻿Build started 13.07.2015 00:23:23.
+﻿Build started 13.07.2015 02:58:03.
      1>Project "E:\Users\MicrowaveStd\Documents\Visual Studio 2013\Projects\um\injector2\injector2\injector2.vcxproj" on node 2 (Rebuild target(s)).
      1>ClCompile:
          E:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\CL.exe /c /nologo /W4 /WX- /O1 /Ob0 /Os /Oy /GL /D WIN32 /D NDEBUG /D _WINDOWS /Gm- /GS- /Gy /fp:precise /fp:except- /Zc:wchar_t /Zc:forScope /GR- /Fo"x64\Release\\" /Fd"x64\Release\vc120.pdb" /Gd /TC /Zl /errorReport:prompt main.c
@@ -12,4 +12,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:01.09
+Time Elapsed 00:00:00.87
